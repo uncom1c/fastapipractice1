@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+motor
+sqlalchemy
+alembic
+psycopg2-binary
+python-dotenv
+fastapi-users[sqlalchemy]
+asyncpg
