@@ -26,18 +26,21 @@ async def lifespan(app: FastAPI):
     
     yield
 
+    # await drop_tables()
+
     # 
 
 
 async def create_tables() -> None:
-    print(3)
     async with engine.begin() as conn:
-        print(4)
         await conn.run_sync(metadata.create_all)
-        print(5)
+
+async def drop_tables() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.drop_all)
 
 
-app = FastAPI(lifespan=lifespan) #сюда что-то дополнить
+app = FastAPI(lifespan=lifespan)
 
 
 

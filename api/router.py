@@ -1,3 +1,4 @@
+import datetime
 import time
 from typing import Dict, List
 from fastapi import APIRouter, Depends
@@ -10,10 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import user 
 from config import JWT_ALGORITHM, JWT_SECRET
 from passlib.context import CryptContext
-
+from sqlalchemy.exc import *
 from auth.auth import signJWT, decodeJWT
 # from api.dependencies import *
-
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -38,10 +38,13 @@ async def get_username(username, db: AsyncSession = Depends(get_async_session)):
 
     query = user.select().where(user.c.username == username)
     found_user = await db.execute(query)
-    found_user = found_user.mappings().first()
+    print(found_user.all())
+    found_user = found_user.one()
+    print(found_user.one())
     
     if found_user:
-        return UserRead(**found_user)
+        # return UserRead(**found_user)
+        return found_user
     else:
         return None
 
@@ -49,9 +52,19 @@ async def get_email(email, db: AsyncSession = Depends(get_async_session)):
 
     query1 = user.select().where(user.c.email == email)
     found_user = await db.execute(query1)
-    found_user = found_user.mappings().first()
+    found_user = found_user.mappings().one()
     if found_user:
-        return UserRead(**found_user)
+        return found_user
+    else:
+        return None
+
+async def get_id(_id, db: AsyncSession = Depends(get_async_session)):
+
+    query1 = user.select().where(user.c.id == _id)
+    found_user = await db.execute(query1)
+    found_user = found_user.mappings().one()
+    if found_user:
+        return found_user
     else:
         return None
 
@@ -63,52 +76,71 @@ async def register_handler(user_create: UserCreate, db: AsyncSession = Depends(g
     # put to db
     # return from db
     # inserted_user = user.insert().values(email = user_create.email, username = user_create.username, password = user_create.password)
-    if await get_email(user_create.email, db):
-        return "email taken"
-    if await get_username(user_create.username, db):
-        return "username taken"
+    # if await get_email(user_create.email, db):
+    #     return "email taken"
+    # if await get_username(user_create.username, db):
+    #     return "username taken"
     
     user_create = encode_user(user_create)
     query = user.insert().values(**user_create.dict())
-    inserted_user = await db.execute(query)
+
+    try:
+        inserted_user = await db.execute(query)
+    except IntegrityError:
+        return "такой пользователь уже есть, ХУЕСОС"
+    
     await db.commit()
 
-    return inserted_user.mappings().all
+    return f"Поздравляем, вы зарегались, пользователь {inserted_user.inserted_primary_key}"
 
 
 
 
 @router.post("/login")
 async def login_handler(user_login: User_login, db: AsyncSession = Depends(get_async_session)):
-    usertry = await get_username(user_login.username , db)
-    if not usertry:
+
+    result = await get_email(user_login.email, db)
+    if not result:
         return "no such user"
 
-    if not verify_password(user_login.password, usertry.password):
+    if not verify_password(user_login.password, result.password):
         return "wrong password"
     
-    return "login ok"
- 
-
-
-
-    # validate
-    # get from db
     # generate jwt
     # return jwt
-    
-    return jwt
+    exp_time = datetime.datetime.now() + datetime.timedelta(seconds=10)
+    print(exp_time)
+    jwt_token = jwt.encode(
+        {
+            "id": result["id"],
+            "exp": exp_time
+        },
+        JWT_SECRET,
+        JWT_ALGORITHM
+    )
+
+    return jwt_token
 
 
 
 @router.get("/user")
-async def user_login_handler(username, db: AsyncSession = Depends(get_async_session)):
+async def user_login_handler(jwt_token, db: AsyncSession = Depends(get_async_session)):
     # decode and verify jwt
     # get user from db by jwt
     # return user
- 
     
-    return await get_username(username, db)
+
+    try:
+        decoded_jwt = jwt.decode(jwt_token, JWT_SECRET, JWT_ALGORITHM, )
+        user_id = decoded_jwt["id"]
+    except jwt.exceptions.DecodeError:
+        return "ПАШЁЛ НАХУЙ ХАКЕР Я ТВАЮ МАМАШУ ЕБАЛ"
+    except jwt.exceptions.ExpiredSignatureError:
+        return "перелогинься, время вышло"
+    except:
+        return "Ошибка какая-то, бля хз"
+
+    return await get_id(user_id, db)
 
 @router.get("/email")
 async def user_email_handler(email, db: AsyncSession = Depends(get_async_session)):

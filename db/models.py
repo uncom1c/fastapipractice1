@@ -18,7 +18,7 @@ user = Table(
     "user",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("email", String, nullable=False),
+    Column("email", String, unique=True, nullable=False),
     Column("username", String, nullable=False),
     Column("password", String, nullable=False)
 )
