@@ -5,5 +5,11 @@ sqlalchemy
 alembic
 psycopg2-binary
 python-dotenv
-fastapi-users[sqlalchemy]
 asyncpg
+pydantic[email]
+PyJWT
+fastapi_sqlalchemy
+python-jose[cryptography]
+passlib
+python-multipart
+bcrypt

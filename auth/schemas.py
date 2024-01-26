@@ -1,33 +1,40 @@
 from typing import Optional
 import uuid
 
-from fastapi_users import schemas
-from pydantic import EmailStr
+from pydantic import BaseModel, EmailStr
 import pydantic_core
 
-
-class UserRead(schemas.BaseUser[int]):
-
-    id: int
-    email: str
+class user_base(BaseModel):
+    email: EmailStr
     username: str
-    role_id: int
-    is_active: bool = True
-    is_superuser: bool = False
-    is_verified: bool = False
 
-
-
+class UserRead(user_base):
+    password: str
+    
     class Config:
         orm_mode = True
 
 
-class UserCreate(schemas.BaseUserCreate):
-    username: str
-    email: EmailStr
+class UserCreate(user_base):
     password: str
-    role_id: int
-    is_active: Optional[bool] = True
-    is_superuser: Optional[bool] = False
-    is_verified: Optional[bool] = False
+    class Config:
+        orm_mode = True
+
+class UserforUser(user_base):
+    id: int
+    class Config:
+        orm_mode = True
+
+class User_login(BaseModel):
+    username: str
+    password: str
+
+    
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str | None = None
 
